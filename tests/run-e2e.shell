@@ -1,0 +1,8 @@
+#!/bin/bash
+# E2E runner — installs jsdom into /tmp (ephemeral) if missing, then runs the browser-flow suite.
+set -e
+if [ ! -d /tmp/node_modules/jsdom ]; then
+  echo "installing jsdom (one-time, /tmp)…"
+  (cd /tmp && npm install jsdom --no-save --silent >/dev/null 2>&1)
+fi
+JSDOM_PATH=/tmp/node_modules/jsdom node "$(dirname "$0")/e2e_browser.js"
