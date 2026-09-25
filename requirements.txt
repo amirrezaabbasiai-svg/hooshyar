@@ -1,0 +1,6 @@
+fastapi>=0.115
+uvicorn[standard]>=0.30
+psycopg[binary]>=3.1   # PostgreSQL driver — needed when HOOSHYAR_DSN is set (production/Docker)
+pytest>=8
+httpx>=0.27
+# optional production additions (Phase 2+):  pgvector  vllm (GPU host)  opencv-python-headless

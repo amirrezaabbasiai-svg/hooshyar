@@ -1,0 +1,43 @@
+# هوش‌یار — production stack: the DATABASE is a SEPARATE service.
+# The api container is stateless & disposable: stop it, rebuild it, or move it
+# to a whole new host — point it at the same database (HOOSHYAR_DSN below) and
+# every student, teacher, exam, attempt and mastery row is still there.
+#
+#   docker compose up -d --build
+#   curl http://localhost:8000/health            → db.engine = "postgres"
+#   docker compose down                          → data STAYS (named volume)
+#
+# Moving to a new server?  docker compose down && rsync/restore the volume
+# `hooshyar-pgdata`, or dump+restore with:  docker compose exec db \
+#   pg_dump -U hooshyar hooshyar | gzip > backups/hooshyar-$(date +%F).sql.gz
+# Then on the new host: docker compose up -d --build (same .env) — no data loss.
+
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: hooshyar
+      POSTGRES_USER: hooshyar
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-change-me-now}   # set a real one in .env
+    volumes:
+      - hooshyar-pgdata:/var/lib/postgresql/data     # ← the durable data store
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U hooshyar -d hooshyar"]
+      interval: 5s
+      timeout: 3s
+      retries: 24
+
+  api:
+    build: .
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      HOOSHYAR_DSN: postgresql://hooshyar:${POSTGRES_PASSWORD:-change-me-now}@db:5432/hooshyar
+    ports:
+      - "8000:8000"
+
+volumes:
+  hooshyar-pgdata:   # named volume → survives `docker compose down`, api crashes & rebuilds
